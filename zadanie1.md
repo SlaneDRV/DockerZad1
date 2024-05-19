@@ -1,11 +1,11 @@
 Budowanie obrazu
 docker build -t myserver:latest .
 
-Uruchamianie kontenera
+\n\nUruchamianie kontenera
 docker run -d -p 8000:8000 myserver:latest
 
-Uzyskiwanie logów
+\n\nUzyskiwanie logów
 docker logs <container_id>
 
-Sprawdzanie historii warstw
+\n\nSprawdzanie historii warstw
 docker history myserver:latest
