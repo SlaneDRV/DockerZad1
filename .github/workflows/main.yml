@@ -50,8 +50,9 @@ jobs:
       - name: Scan the Docker image with Docker Scout
         uses: docker/scout-action@v1
         with:
-          docker-image: ${{ steps.meta.outputs.tags }}
+          image: ${{ steps.meta.outputs.tags }}
           severity-threshold: 'HIGH'
+          dockerfile-path: ./Dockerfile
 
       - name: Push to GitHub Packages on success
         if: ${{ steps.scout.outputs.vulnerabilities == 'none' }}
