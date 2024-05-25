@@ -52,7 +52,7 @@ jobs:
         with:
           image: ${{ steps.meta.outputs.tags }}
           severity-threshold: 'HIGH'
-          dockerfile-path: ./Dockerfile
+
 
       - name: Push to GitHub Packages on success
         if: ${{ steps.scout.outputs.vulnerabilities == 'none' }}
