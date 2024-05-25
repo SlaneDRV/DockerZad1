@@ -37,11 +37,22 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Docker image
+      - name: Build (but not push) Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: true
+          push: false
+          load: true
           tags: ${{ steps.meta.outputs.tags }}
+
+      - name: Scan the Docker image for vulnerabilities
+        uses: docker/scan-action@v1
+        with:
+          image: ${{ steps.meta.outputs.tags }}
+
+      - name: Conditionally push the Docker image
+        if: steps.scan.outputs.vulnerabilities == '0'
+        run: |
+          docker push ${{ steps.meta.outputs.tags }}
