@@ -24,6 +24,7 @@ jobs:
           tags: |
             type=sha,priority=100,prefix=sha-,format=short
             type=semver,priority=200,pattern={{version}}   
+
       - name: QEMU set-up
         uses: docker/setup-qemu-action@v3
 
@@ -49,7 +50,7 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: true
+          push: false
           tags: ${{ steps.meta.outputs.tags }}
 
       - name: Scan image with Docker Scout
