@@ -10,7 +10,7 @@ jobs:
   ci_step:
     name: Build, tag and push Docker image to DockerHub and GHCR
     runs-on: ubuntu-latest
-      
+    
     steps:
       - name: Check out the source_repo
         uses: actions/checkout@v4
@@ -19,16 +19,20 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKERHUB_USERNAME }}/example, ghcr.io/${{ github.repository_owner }}/example
+          images: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/example
+            ghcr.io/${{ github.repository_owner }}/example
           flavor: latest=false
           tags: |
-            type=sha,priority=100,prefix=sha-,format=short
-            type=semver,priority=200,pattern={{version}}   
-
-      - name: QEMU set-up
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix=sha-,format=short
+            type=semver,pattern={{version}}
+      
+      - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
-      - name: Buildx set-up
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Login to DockerHub
@@ -50,16 +54,9 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: false
+          push: true
+          cache-from: |
+            type=registry,ref=${{ steps.meta.outputs.tags }}
+          cache-to: |
+            type=registry,ref=${{ steps.meta.outputs.tags }},mode=max
           tags: ${{ steps.meta.outputs.tags }}
-
-      - name: Scan image with Docker Scout
-        uses: docker/scout-action@v1
-        with:
-          image: ${{ steps.meta.outputs.tags }}
-
-      - name: Push to DockerHub and GHCR
-        if: steps.scout.outputs.critical == '0' && steps.scout.outputs.high == '0'
-        run: |
-          docker push ${{ steps.meta.outputs.tags }} to DockerHub
-          docker push ${{ steps.meta.outputs.tags }} to GHCR
