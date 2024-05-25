@@ -1,7 +1,6 @@
 name: Build, Push and Scan Docker Image
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - main
@@ -9,66 +8,47 @@ on:
       - 'v*'
 
 jobs:
-  ci_step:
-    name: Build, tag and push Docker image to DockerHub and GHCR
+  build-push-scan:
     runs-on: ubuntu-latest
-      
+
     steps:
-      - name: Check out the source_repo
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-      - name: Docker metadata definitions
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: |
-            ${{ secrets.slanedrv }}/example
-            ghcr.io/${{ github.repository_owner }}/example
-          flavor: |
-            latest=false
-          tags: |
-            type=sha,priority=100,prefix=sha-,format=short
-            type=semver,priority=200,pattern={{version}}
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v1
 
-      - name: QEMU set-up
-        uses: docker/setup-qemu-action@v3
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
 
-      - name: Buildx set-up
-        uses: docker/setup-buildx-action@v3
+    - name: Login to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.slanedrv }}
+        password: ${{ secrets.dckr_pat_z6tqyh48eddYk_FGOOynI8kGdQQ }}
 
-      - name: Login to DockerHub
-        uses: docker/login-action@v3
-        with:
-          registry: docker.io
-          username: ${{ secrets.slanedrv }}
-          password: ${{ secrets.dckr_pat_z6tqyh48eddYk_FGOOynI8kGdQQ }}
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        file: ./Dockerfile
+        push: true
+        tags: ${{ secrets.slanedrv }}/myapp:latest
+        cache-from: type=registry,ref=${{ secrets.slanedrv }}/myapp:buildcache
+        cache-to: type=inline
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.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 }}
+    - name: Scan the Docker image with Docker Scout
+      uses: docker/scout-action@v1
+      with:
+        severity: 'high'
+        fail-on: 'high'
+        username: ${{ secrets.slanedrv }}
+        password: ${{ secrets.dckr_pat_z6tqyh48eddYk_FGOOynI8kGdQQ }}
+        image: ${{ secrets.slanedrv }}/myapp:latest
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          cache-from: type=registry,ref=${{ secrets.slanedrv }}/example:cache 
-          cache-to: type=registry,ref=${{ secrets.slanedrv }}/example:cache,mode=max 
-          tags: ${{ steps.meta.outputs.tags }}
-
-      - name: Scan image with Docker Scout
-        uses: docker/scout-action@v1
-        with:
-          image: ${{ steps.meta.outputs.tags }}
-          fail_on_severity: high
-
-      - name: Push to GHCR on pass
-        if: steps.scout.outputs.failure == 'false'
-        run: |
-          echo "Image passed the security checks, pushing to GHCR..."
-          docker push ${{ steps.meta.outputs.tags }} to ghcr.io
+    - name: Push the Docker image to GitHub Packages
+      if: success()
+      run: |
+        echo ${{ secrets.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 }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        docker tag ${{ secrets.slanedrv }}/myapp:latest ghcr.io/${{ github.repository_owner }}/myapp:latest
+        docker push ghcr.io/${{ github.repository_owner }}/myapp:latest
