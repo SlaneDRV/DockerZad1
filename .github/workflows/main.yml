@@ -48,9 +48,10 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
 
       - name: Scan the Docker image for vulnerabilities
-        uses: docker/scan-action@v0.17.0
+        uses: docker/scan-action@main
         with:
           image: ${{ steps.meta.outputs.tags }}
+          fail-build: true
           severity-threshold: 'HIGH'
 
       - name: Conditionally push the Docker image
