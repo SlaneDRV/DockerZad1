@@ -24,7 +24,6 @@ jobs:
           tags: |
             type=sha,priority=100,prefix=sha-,format=short
             type=semver,priority=200,pattern={{version}}
-
       - name: QEMU set-up
         uses: docker/setup-qemu-action@v3
 
@@ -37,14 +36,13 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build (but not push) Docker image
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: false
-          load: true
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
 
       - name: Scan the Docker image
@@ -53,9 +51,7 @@ jobs:
         run: |
           scan_result=$(docker scan ${{ steps.meta.outputs.tags }} --accept-license --severity high)
           echo "::set-output name=scan-result::$scan_result"
-
       - name: Check scan results and decide to push
         if: steps.scan.outputs.scan-result == '0'
         run: |
           echo "No vulnerabilities found, proceeding to push the image..."
-          docker push ${{ steps.meta.outputs.tags }}
