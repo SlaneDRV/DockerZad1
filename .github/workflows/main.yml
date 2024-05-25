@@ -19,12 +19,11 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.slanedrv }}/example, ghcr.io/${{ github.repository_owner }}/example
+          images: ${{ env.DOCKERHUB_USERNAME }}/example, ghcr.io/${{ github.repository_owner }}/example
           flavor: latest=false
           tags: |
             type=sha,priority=100,prefix=sha-,format=short
             type=semver,priority=200,pattern={{version}}   
-
       - name: QEMU set-up
         uses: docker/setup-qemu-action@v3
 
@@ -34,15 +33,15 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.slanedrv }}
-          password: ${{ secrets.dckr_pat_NAEhKdTIZTJHokX-A5llZvSCkRA }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.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 }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -50,7 +49,7 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: false
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
 
       - name: Scan image with Docker Scout
