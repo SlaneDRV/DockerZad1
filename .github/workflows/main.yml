@@ -8,7 +8,7 @@ on:
 
 jobs:
   ci_step:
-    name: Build, tag and push Docker image to DockerHub and GHCR
+    name: Build, tag and push Docker image
     runs-on: ubuntu-latest
       
     steps:
@@ -19,11 +19,11 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKERHUB_USERNAME }}/example, ghcr.io/${{ github.repository_owner }}/example
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/example
           flavor: latest=false
           tags: |
             type=sha,priority=100,prefix=sha-,format=short
-            type=semver,priority=200,pattern={{version}}   
+            type=semver,priority=200,pattern={{version}}
 
       - name: QEMU set-up
         uses: docker/setup-qemu-action@v3
@@ -37,29 +37,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.TOKEN_GITHUB }}
-
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: false
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
-
-      - name: Scan image with Docker Scout
-        uses: docker/scout-action@v1
-        with:
-          image: ${{ steps.meta.outputs.tags }}
-
-      - name: Push to DockerHub and GHCR
-        if: steps.scout.outputs.critical == '0' && steps.scout.outputs.high == '0'
-        run: |
-          docker push ${{ steps.meta.outputs.tags }} to DockerHub
-          docker push ${{ steps.meta.outputs.tags }} to GHCR
