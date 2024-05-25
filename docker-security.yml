@@ -3,8 +3,10 @@ name: Build, Push and Scan Docker Image
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     tags:
-    - 'v*'
+      - 'v*'
 
 jobs:
   ci_step:
@@ -14,16 +16,19 @@ jobs:
     steps:
       - name: Check out the source_repo
         uses: actions/checkout@v4
-      
+
       - name: Docker metadata definitions
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.slanedrv }}/example, ghcr.io/${{ github.repository_owner }}/example
-          flavor: latest=false
+          images: |
+            ${{ secrets.slanedrv }}/example
+            ghcr.io/${{ github.repository_owner }}/example
+          flavor: |
+            latest=false
           tags: |
             type=sha,priority=100,prefix=sha-,format=short
-            type=semver,priority=200,pattern={{version}}   
+            type=semver,priority=200,pattern={{version}}
 
       - name: QEMU set-up
         uses: docker/setup-qemu-action@v3
@@ -34,6 +39,7 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
+          registry: docker.io
           username: ${{ secrets.slanedrv }}
           password: ${{ secrets.dckr_pat_z6tqyh48eddYk_FGOOynI8kGdQQ }}
 
@@ -50,16 +56,19 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: false
+          push: true
+          cache-from: type=registry,ref=${{ secrets.slanedrv }}/example:cache 
+          cache-to: type=registry,ref=${{ secrets.slanedrv }}/example:cache,mode=max 
           tags: ${{ steps.meta.outputs.tags }}
 
       - name: Scan image with Docker Scout
         uses: docker/scout-action@v1
         with:
           image: ${{ steps.meta.outputs.tags }}
+          fail_on_severity: high
 
-      - name: Push to DockerHub and GHCR
-        if: steps.scout.outputs.critical == '0' && steps.scout.outputs.high == '0'
+      - name: Push to GHCR on pass
+        if: steps.scout.outputs.failure == 'false'
         run: |
-          docker push ${{ steps.meta.outputs.tags }} to DockerHub
-          docker push ${{ steps.meta.outputs.tags }} to GHCR
+          echo "Image passed the security checks, pushing to GHCR..."
+          docker push ${{ steps.meta.outputs.tags }} to ghcr.io
