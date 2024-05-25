@@ -34,7 +34,7 @@ jobs:
           images: ${{ secrets.DOCKERHUB_USERNAME }}/example
           tags: |
             type=sha,priority=100,prefix=sha-,format=short
-            type=semver,priority=200
+            type=semver,priority=200,pattern={{version}}
 
       - name: Build and push
         uses: docker/build-push-action@v5
