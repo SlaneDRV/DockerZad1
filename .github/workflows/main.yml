@@ -19,7 +19,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/example
+          images: ${{ secrets.GITHUB_REPOSITORY }}/example
           flavor: latest=false
           tags: |
             type=sha,priority=100,prefix=sha-,format=short
@@ -30,13 +30,29 @@ jobs:
       - name: Buildx set-up
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to DockerHub
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+
+      - name: Scan the Docker image with Docker Scout
+        uses: docker/scout-action@v1
+        with:
+          image: ${{ steps.meta.outputs.tags }}
+
+      - name: Push Docker image conditionally
+        if: steps.scout.outputs.critical == '0' && steps.scout.outputs.high == '0'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -44,14 +60,3 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-
-      - name: Scan the Docker image
-        id: scan
-        continue-on-error: true
-        run: |
-          scan_result=$(docker scan ${{ steps.meta.outputs.tags }} --accept-license --severity high)
-          echo "::set-output name=scan-result::$scan_result"
-      - name: Check scan results and decide to push
-        if: steps.scan.outputs.scan-result == '0'
-        run: |
-          echo "No vulnerabilities found, proceeding to push the image..."
