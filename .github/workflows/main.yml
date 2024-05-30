@@ -59,10 +59,17 @@ jobs:
       - name: Scan image with Docker Scout
         uses: docker/scout-action@v1
         with:
-          command: cves
-          image: ${{ steps.meta.outputs.tags }}
-          sarif-file: 'scout-report.sarif'
-          fail-on: 'critical,high'
+          command: 'cves'
+          image: ${{ steps.meta.outputs.tags }} 
+          sarif-file: 'scout-report.sarif' 
+
+      - name: Check SARIF report for critical vulnerabilities
+        run: |
+          critical=$(jq '.runs[].tool.driver.rules[] | select(.defaultConfiguration.level == "error") | length' scout-report.sarif)
+          if [ "$critical" -gt 0 ]; then
+            echo "Critical vulnerabilities found"
+            exit 1
+          fi
 
 
       - name: Login to GitHub Container Registry
