@@ -84,7 +84,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.TOKEN_GITHUB }}
+          password: ${{ secrets.MY_GITHUB_TOKEN }}
 
       - name: Push Image to GHCR
         if: ${{ steps.validate_vulnerabilities.outcome == 'success' }}
