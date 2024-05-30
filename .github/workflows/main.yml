@@ -62,13 +62,13 @@ jobs:
           sarif-file: sarif.output.json
           summary: true
 
-      - name: Check for critical and high vulnerabilities
+      - name: Analyze vulnerability report
         run: |
-          critical=$(jq '.runs[].results | map(select(.level == "error")) | length' sarif.output.json)
-          high=$(jq '.runs[].results | map(select(.level == "warning")) | length' sarif.output.json)
-          if [ "$critical" -ne 0 ] || [ "$high" -ne 0 ]; then
-            echo "Found critical or high threats"
+          if jq -e '.runs[].results | map(select(.level == "error" or .level == "warning")) | length > 0' sarif.output.json; then
+            echo "Critical or high vulnerabilities found"
             exit 1
+          else
+            echo "No critical or high vulnerabilities found"
           fi
       
       - name: Login to GitHub Container Registry
