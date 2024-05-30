@@ -64,6 +64,7 @@ jobs:
           summary: true
 
       - name: Validate Vulnerabilities
+        id: validate_vulnerabilities
         run: |
           vulnerabilities=$(jq '[.runs[].results[].level] | {"critical": (map(select(. == "error")) | length), "high": (map(select(. == "warning")) | length)}' security-report.sarif)
           critical=$(echo $vulnerabilities | jq '.critical')
@@ -78,15 +79,15 @@ jobs:
         shell: bash
       
       - name: Authenticate with GHCR
-        if: ${{ steps.Validate Vulnerabilities.outcome == 'success' }}
-        uses: docker/login-action@v1
+        if: ${{ steps.validate_vulnerabilities.outcome == 'success' }}
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.TOKEN_GITHUB }}
 
       - name: Push Image to GHCR
-        if: ${{ steps.Validate Vulnerabilities.outcome == 'success' }}
+        if: ${{ steps.validate_vulnerabilities.outcome == 'success' }}
         uses: docker/build-push-action@v5
         with:
           context: .
