@@ -41,7 +41,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.TOKEN_GITHUB }}
+          password: ${{ secrets.GHCR_PAT }}
 
       - 
         name: Build and push Docker image
@@ -62,6 +62,7 @@ jobs:
         uses: docker/scout-action@v1
         with:
           image: ghcr.io/slanedrv/example:latest
+          github-token: ${{ secrets.GHCR_PAT }}
           exit-on: 'critical,high'
 
       -
