@@ -21,7 +21,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/example
+          images: ghcr.io/slanedrv/example
           flavor: latest=false
           tags: |
             type=sha,priority=100,format=short
@@ -52,19 +52,19 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: false  # Поменяйте push на false для предварительной сборки
           cache-from: |
-            type=registry,ref=ghcr.io/${{ github.repository_owner }}/example:cache 
+            type=registry,ref=ghcr.io/slanedrv/example:cache 
           cache-to: |
-            type=registry,ref=ghcr.io/${{ github.repository_owner }}/example:cache  
+            type=registry,ref=ghcr.io/slanedrv/example:cache  
           tags: ${{ steps.meta.outputs.tags }}
 
       - 
         name: Scan image with Docker Scout
         uses: docker/scout-action@v1
         with:
-          image: ghcr.io/${{ github.repository_owner }}/example:latest
+          image: ghcr.io/slanedrv/example:latest
           fail-on-severity: critical,high
 
       -
         name: Push image to GitHub Container Registry
         if: success()  # Этот шаг выполняется, если предыдущий шаг не обнаружил уязвимостей
-        run: docker push ghcr.io/${{ github.repository_owner }}/example:latest
+        run: docker push ghcr.io/slanedrv/example:latest
