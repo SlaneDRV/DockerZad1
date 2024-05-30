@@ -1,63 +1,36 @@
-name: GHAction example  
+name: Docker Scout CI
 
-on:
-  workflow_dispatch:
-  push:
-    tags:
-    - 'v*'
+on: [push, pull_request]
 
 jobs:
-  ci_step:
-    name: Build, tag and push Docker image to GitHub Container Registry
+  scan:
     runs-on: ubuntu-latest
-      
+    permissions:
+      contents: read
+      security-events: write
+
     steps:
-      - name: Check out the source_repo
-        uses: actions/checkout@v4
-      
-      - name: Docker metadata definitions
-        id: meta
-        uses: docker/metadata-action@v5
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to DockerHub (если требуется)
+        uses: docker/login-action@v1
         with:
-          images: ghcr.io/slanedrv/example
-          flavor: latest=false
-          tags: |
-            type=sha,priority=100,format=short
-            type=semver,priority=200,pattern={{version}}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: QEMU set-up
-        uses: docker/setup-qemu-action@v3
-
-      - name: Buildx set-up
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_PAT }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+      - name: Build and push
+        uses: docker/build-push-action@v2
         with:
           context: .
-          file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: false  # Поменяйте push на false для предварительной сборки
-          cache-from: |
-            type=registry,ref=ghcr.io/slanedrv/example:cache 
-          cache-to: |
-            type=registry,ref=ghcr.io/slanedrv/example:cache  
-          tags: ${{ steps.meta.outputs.tags }}
+          push: true
+          tags: slanedrv/example:latest
 
-      - name: Scan image with Docker Scout
+      - name: Scan with Docker Scout
         uses: docker/scout-action@v1
         with:
-          image: ghcr.io/slanedrv/example:latest
-          github-token: ${{ secrets.GHCR_PAT }}
-          exit-on: 'critical,high'
-
-      - name: Push image to GitHub Container Registry
-        if: success()  # Этот шаг выполняется, если предыдущий шаг не обнаружил уязвимостей
-        run: docker push ghcr.io/slanedrv/example:latest
+          image: slanedrv/example:latest
+          github-token: ${{ secrets.GITHUB_TOKEN }}
