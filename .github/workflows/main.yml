@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main 
+      - main
     tags:
       - 'v*'
 
@@ -21,11 +21,11 @@ jobs:
       - name: Check out the source_repo
         uses: actions/checkout@v4
       
-      - name: Docker metadata definitions
-        id: meta
+      - name: Docker metadata definitions for DockerHub
+        id: meta-dockerhub
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/example,ghcr.io/${{ github.repository }}/example
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/example
           flavor: latest=false
           tags: |
             type=sha,priority=100,prefix=sha-,format=short
@@ -41,39 +41,38 @@ jobs:
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      - name: Build and push Docker image
+      - name: Build and push Docker image to DockerHub
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: false
-          cache-from: |
-            type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/example:cache
-          cache-to: |
-            type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/example:cache
-          tags: ${{ steps.meta.outputs.tags }}
-
-      - name: Scan image with Docker Scout
+          push: true
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/example:cache
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/example:cache
+          tags: ${{ steps.meta-dockerhub.outputs.tags }}
+      
+      - name: Scan image for vulnerabilities
         uses: docker/scout-action@v1
         with:
-          command: 'cves'
-          image: ${{ steps.meta.outputs.tags }} 
-          sarif-file: 'scout-report.sarif' 
+          command: cves
+          image: ${{ steps.meta-dockerhub.outputs.tags }}
+          sarif-file: sarif.output.json
+          summary: true
 
-      - name: Check SARIF report for critical vulnerabilities
+      - name: Check for critical and high vulnerabilities
         run: |
-          critical=$(jq '.runs[].tool.driver.rules[] | select(.defaultConfiguration.level == "error") | length' scout-report.sarif)
-          if [ "$critical" -gt 0 ]; then
-            echo "Critical vulnerabilities found"
+          critical=$(jq '.runs[].results | map(select(.level == "error")) | length' sarif.output.json)
+          high=$(jq '.runs[].results | map(select(.level == "warning")) | length' sarif.output.json)
+          if [ "$critical" -ne 0 ] || [ "$high" -ne 0 ]; then
+            echo "Found critical or high threats"
             exit 1
           fi
-
-
-      - name: Login to GitHub Container Registry
-        if: success() 
+      
+      - name: Login to GitHub Container Registry if no critical or high vulnerabilities found
+        if: success()
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -88,4 +87,4 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ steps.meta-dockerhub.outputs.tags }}
