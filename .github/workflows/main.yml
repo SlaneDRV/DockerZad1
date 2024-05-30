@@ -13,10 +13,6 @@ jobs:
   ci_step:
     name: Build, tag and push Docker image to DockerHub
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      packages: write
       
     steps:
       - 
