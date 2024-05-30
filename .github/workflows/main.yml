@@ -80,7 +80,7 @@ jobs:
       
       - name: Authenticate with GHCR
         if: ${{ steps.validate_vulnerabilities.outcome == 'success' }}
-        uses: docker/login-action@v3
+        uses: docker/login-action@v1
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
