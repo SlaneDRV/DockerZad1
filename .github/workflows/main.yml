@@ -29,14 +29,14 @@ jobs:
         context: .
         file: ./Dockerfile
         push: true
-        tags: ghcr.io/${{ github.repository }}/myapp:latest
+        tags: ghcr.io/${{ github.repository_owner }}/myapp:latest
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache-new
 
     - name: Scan image with Docker Scout
       uses: docker/scout-action@v1
       with:
-        image: "ghcr.io/${{ github.repository }}/myapp:latest"
+        image: "ghcr.io/${{ github.repository_owner }}/myapp:latest"
         fail-level: 'high'  # Fail the job if high or critical vulnerabilities are found
 
     - name: Log in to GitHub Container Registry
@@ -48,4 +48,4 @@ jobs:
 
     - name: Push to GitHub Container Registry
       run: |
-        docker push ghcr.io/${{ github.repository }}/myapp:latest
+        docker push ghcr.io/${{ github.repository_owner }}/myapp:latest
