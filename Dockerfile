@@ -4,6 +4,12 @@ FROM python:3.9-slim
 # Instalowanie bezpiecznej wersji setuptools
 RUN pip install --no-cache-dir "setuptools>=65.5.1"
 
+# Instalowanie zależności dla httpserver
+RUN pip install --no-cache-dir httpserver
+
+# Usunięcie pip w celu zminimalizowania ryzyka
+RUN pip uninstall -y pip
+
 # Ustawienie katalogu roboczego
 WORKDIR /usr/src/app
 
