@@ -71,8 +71,8 @@ jobs:
             exit 1
           fi
       
-      - name: Login to GitHub Container Registry if no critical or high vulnerabilities found
-        if: success()
+      - name: Login to GitHub Container Registry
+        if: ${{ steps.check-cves.outcome == 'success' }}
         uses: docker/login-action@v1
         with:
           registry: ghcr.io
