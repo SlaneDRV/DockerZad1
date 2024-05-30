@@ -8,7 +8,7 @@ on:
 
 jobs:
   ci_step:
-    name: Build, tag and push Docker image to DockerHub
+    name: Build, tag and push Docker image to GitHub Container Registry
     runs-on: ubuntu-latest
       
     steps:
