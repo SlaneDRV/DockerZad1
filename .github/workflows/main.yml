@@ -12,6 +12,9 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
+    - name: Lowercase repository owner
+      run: echo "REPO_OWNER=${{ github.repository_owner }}".toLowerCase() >> $GITHUB_ENV
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1
 
@@ -29,14 +32,14 @@ jobs:
         context: .
         file: ./Dockerfile
         push: true
-        tags: ghcr.io/${{ github.repository_owner }}/myapp:latest
+        tags: ghcr.io/${{ env.REPO_OWNER }}/myapp:latest
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache-new
 
     - name: Scan image with Docker Scout
       uses: docker/scout-action@v1
       with:
-        image: "ghcr.io/${{ github.repository_owner }}/myapp:latest"
+        image: "ghcr.io/${{ env.REPO_OWNER }}/myapp:latest"
         fail-level: 'high'  # Fail the job if high or critical vulnerabilities are found
 
     - name: Log in to GitHub Container Registry
@@ -48,4 +51,4 @@ jobs:
 
     - name: Push to GitHub Container Registry
       run: |
-        docker push ghcr.io/${{ github.repository_owner }}/myapp:latest
+        docker push ghcr.io/${{ env.REPO_OWNER }}/myapp:latest
