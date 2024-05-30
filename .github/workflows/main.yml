@@ -59,8 +59,11 @@ jobs:
       - name: Scan image with Docker Scout
         uses: docker/scout-action@v1
         with:
+          command: cves
           image: ${{ steps.meta.outputs.tags }}
-          fail-on-severity: critical,high
+          sarif-file: 'scout-report.sarif'
+          fail-on: 'critical,high'
+
 
       - name: Login to GitHub Container Registry
         if: success() 
