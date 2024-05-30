@@ -10,7 +10,7 @@ on:
 
 jobs:
   ci_step:
-    name: Build, scan, and push Docker image
+    name: Build, Test, and Deploy Docker Image
     runs-on: ubuntu-latest
     
     permissions:
@@ -18,10 +18,10 @@ jobs:
       packages: write
       
     steps:
-      - name: Check out the source_repo
+      - name: Checkout Code
         uses: actions/checkout@v4
       
-      - name: Docker metadata definitions for DockerHub
+      - name: Define Docker Metadata
         id: meta-dockerhub
         uses: docker/metadata-action@v5
         with:
@@ -31,19 +31,20 @@ jobs:
             type=sha,priority=100,prefix=sha-,format=short
             type=semver,priority=200,pattern={{version}}
 
-      - name: Set up QEMU
+      - name: Initialize QEMU
         uses: docker/setup-qemu-action@v3
 
-      - name: Set up Docker Buildx
+      - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to DockerHub
+      - name: DockerHub Authentication
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Docker image to DockerHub
+      - name: Build and Publish Docker Image
+        id: build_docker
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -54,37 +55,42 @@ jobs:
           cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/example:cache
           tags: ${{ steps.meta-dockerhub.outputs.tags }}
       
-      - name: Scan image for vulnerabilities
+      - name: Security Scan with Docker Scout
         uses: docker/scout-action@v1
         with:
           command: cves
           image: ${{ steps.meta-dockerhub.outputs.tags }}
-          sarif-file: sarif.output.json
+          sarif-file: security-report.sarif
           summary: true
 
-      - name: Analyze vulnerability report
+      - name: Validate Vulnerabilities
         run: |
-          if jq -e '.runs[].results | map(select(.level == "error" or .level == "warning")) | length > 0' sarif.output.json; then
-            echo "Critical or high vulnerabilities found"
+          vulnerabilities=$(jq '[.runs[].results[].level] | {"critical": (map(select(. == "error")) | length), "high": (map(select(. == "warning")) | length)}' security-report.sarif)
+          critical=$(echo $vulnerabilities | jq '.critical')
+          high=$(echo $vulnerabilities | jq '.high')
+          
+          if [ "$critical" -gt 0 ] || [ "$high" -gt 0 ]; then
+            echo "Found $critical critical and $high high vulnerabilities."
             exit 1
           else
-            echo "No critical or high vulnerabilities found"
+            echo "No critical or high vulnerabilities found."
           fi
+        shell: bash
       
-      - name: Login to GitHub Container Registry
-        if: ${{ steps.check-cves.outcome == 'success' }}
+      - name: Authenticate with GHCR
+        if: ${{ steps.Validate Vulnerabilities.outcome == 'success' }}
         uses: docker/login-action@v1
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.TOKEN_GITHUB }}
 
-      - name: Push the image to GHCR
-        if: success()
+      - name: Push Image to GHCR
+        if: ${{ steps.Validate Vulnerabilities.outcome == 'success' }}
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta-dockerhub.outputs.tags }}
+          tags: ghcr.io/${{ github.repository }}/myapp:latest
