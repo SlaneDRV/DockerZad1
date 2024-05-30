@@ -62,7 +62,7 @@ jobs:
         uses: docker/scout-action@v1
         with:
           image: ghcr.io/slanedrv/example:latest
-          fail-on-severity: critical,high
+          exit-on: 'critical,high'
 
       -
         name: Push image to GitHub Container Registry
