@@ -1,36 +1,61 @@
-name: Docker Scout CI
+name: GHAction example  
 
-on: [push, pull_request]
+on:
+  workflow_dispatch:
+  push:
+    branches: 
+      - main
+    tags:
+    - 'v*'
 
 jobs:
-  scan:
+  build_and_push:
+    name: Build, tag and push Docker image
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-
+      
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
+      
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v3
 
-      - name: Login to DockerHub (если требуется)
-        uses: docker/login-action@v1
+      - name: Log in to DockerHub
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/example
+          flavor: latest=false
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha,priority=2000
+
       - name: Build and push
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v3
         with:
           context: .
+          file: ./Dockerfile
           push: true
-          tags: slanedrv/example:latest
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
-      - name: Scan with Docker Scout
+      - name: Scan the image with Docker Scout
         uses: docker/scout-action@v1
         with:
-          image: slanedrv/example:latest
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          image: ${{ steps.meta.outputs.tags }}
+          fail-on-severity: critical,high
+
+      - name: Push the image if safe
+        run: |
+          if ${{ steps.scan.outcome }} == 'success'
+          then
+            docker push ${{ steps.meta.outputs.tags }}
+          fi
