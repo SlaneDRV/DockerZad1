@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3  # Обновлено до последней версии
 
     - name: Lowercase repository owner
       run: echo "REPO_OWNER=${{ github.repository_owner }}".toLowerCase() >> $GITHUB_ENV
@@ -40,7 +40,7 @@ jobs:
       uses: docker/scout-action@v1
       with:
         image: "ghcr.io/${{ env.REPO_OWNER }}/myapp:latest"
-        fail-level: 'high'  # Fail the job if high or critical vulnerabilities are found
+        fail-level: 'high'
 
     - name: Log in to GitHub Container Registry
       uses: docker/login-action@v1
